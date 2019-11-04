@@ -1,22 +1,42 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Hello HomePageController!{% endblock %}
-
+{% block title %}Scan Device{% endblock %}
 {% block body %}
 <div class="container">
   <div class="row">
     
     <div class="col-md-12">
-       <div id="loadingMessage">🎥 Unable to access video stream (please make sure you have a webcam enabled)</div>
+       <div id="loadingMessage" hidden>🎥 Unable to access video stream (please make sure you have a webcam enabled)</div>
     </div>
 
   </div>
 
+  <div class="row justify-content-center mt-4">
+    <div class="col-3 text-center">
+      <img class="responsive" src="https://www.stardust-testing.com/wp-content/themes/stardust/img/stardust.svg">  
+    </div>
+    
+  </div>
+
+  <div class="row">
+    <p>Select the tester which </p>
+  </div>
   <div class="row">
     
-    <div class="col-md-2 col-md-offset-5">
+    <div class="col-md-6">
       <div class="form-group">
-        <label for="cameras">Cameras</label>
+        <label for="tester">Select the tester</label>
+        <select class="form-control" id="tester" >
+          <option val="Miguel Hernandez">Miguel Hernandez</option>
+          <option val="Jeremy Breau">Jeremy Breau</option>
+          <option val="Patricia Rivereau">Patricia Rivereau</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="form-group">
+        <label for="cameras">Select Camera </label>
         <select class="form-control" id="cameras" >
         </select>
       </div>
@@ -35,12 +55,14 @@
           <div id="outputMessage">No QR code detected.</div>
           <div hidden><b>Data:</b> <span id="outputData"></span></div>
       </div>
+
     </div>
+
   </div>
 
   <div class="row">
     
-    <div class="col-md-2 col-md-offset-5">
+    <div id="canvasContainer" class="col-md-2 col-md-offset-5">
         <canvas id="canvas"  hidden width="300" height="300">
           Sorry, your browser doesn't support the &lt;canvas&gt; element.
         </canvas>
@@ -48,7 +70,7 @@
 
   </div>
 
-  <div class="row">
+  <div class="row mt-4">
     <div class="col-md-12">
       <table class="table table-striped" id="devices">
         <thead>
@@ -60,22 +82,29 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <th scope="row">1</th>
-            <td>Miguel Hernandez</td>
-            <td>BT1234</td>
-            <td>Galaxy</td>
-          </tr>
         </tbody>
       </table>
     </div>
   </div>
 
+  <div class="row justify-content-center mt-4">
+    <div class="col-3 text-center">
+      <button id="takeDevices" type="button" class="btn btn-primary" onClick="takeDevices()">Take devices</button>
+    <div>
+    </div>
+  </div>
 </div>
+{% endblock %}
 
-<script type="text/javascript">
+{% block js %}
+<script>
+  $(document).ready(function(){
+    $("#takeDevices").attr("disabled", true);
+  });
 
-  var video = document.createElement("video");
+  navigator.mediaDevices.enumerateDevices().then(gotDevices);
+    var countDevices =0;
+    var video = document.createElement("video");
     var canvasElement = document.getElementById("canvas");
     var canvas = canvasElement.getContext("2d");
     var loadingMessage = document.getElementById("loadingMessage");
@@ -84,12 +113,56 @@
     var outputData = document.getElementById("outputData");
     const select =document.getElementById("cameras");
     let currentStream;
-    
-    function addDevice(device){
-       $('#devices').append("<tr><td>2</td><td>"+device+"</td><td>Iphone 7</td></tr>");
-    }
+  
+  function takeDevices(){
 
-    function drawLine(begin, end, color) {
+    var dataSend = [];
+
+    $('#devices tr').each(function() {
+        var tester = $(this).find(".testerName").html();  
+        var btCode = $(this).find(".btCode").html();   
+        var btDesc =$(this).find(".btDesc").html();
+      if(tester){
+        var feed = {
+        testerName: tester, 
+        btId: btCode, description: btDesc};
+        dataSend.push(feed);
+      }
+      
+    });
+
+    $.ajax({
+            url: '/registerDevice',
+            type: 'post',
+            dataType: 'json',
+            contentType: 'application/json',
+            success: function (data) {
+                var notification =new Noty({
+                    type: 'success',
+                    layout: 'topRight',
+                    text: 'Devices has been taken! :)'
+                });
+                notification.show();
+                notification.setTimeout(4500);
+                $("#devices > tbody").html("");
+                countDevices =0;
+                $("#takeDevices").attr("disabled", true);
+                console.log(data);
+            },
+            data: JSON.stringify(dataSend)
+        });
+  }
+
+  function addDevice(code){
+    var decode = new DecodeQr();
+    var res = decode.decodeQr(code);
+    var testerName = $("#tester").val();
+    countDevices++;
+    $("#devices").append("<tr><td>" + countDevices + "</td><td class='testerName'>"+testerName+"</td><td class='btCode'>" + res.btCode + "</td><td class='btDesc'>"+res.description+"</td></tr>");
+    $("#takeDevices").attr("disabled", false);
+  }
+
+  function drawLine(begin, end, color) {
       canvas.beginPath();
       canvas.moveTo(begin.x, begin.y);
       canvas.lineTo(end.x, end.y);
@@ -98,14 +171,13 @@
       canvas.stroke();
     }
 
-    navigator.mediaDevices.enumerateDevices().then(gotDevices);
-
     function startVideo(){
       // Use facingMode: environment to attemt to get the front camera on phones
+      $("#canvasContainer").fadeIn("slow");
       console.log('getting video');
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream) {
       currentStream= stream;
-      video.srcObject = stream;
+      video.srcObject = currentStream;
       video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
       video.play();
       requestAnimationFrame(tick);
@@ -113,10 +185,11 @@
 
     }
 
-    function stopMediaTracks(stream) {
-      stream.getTracks().forEach(track => {
-        track.stop();
-      });
+    function stopMediaTracks() {
+          currentStream.getTracks().forEach(track => {
+          track.stop();
+        });
+      $("#canvasContainer").fadeOut("slow");
     }
 
     function gotDevices(mediaDevices) {
@@ -124,13 +197,14 @@
       select.appendChild(document.createElement('option'));
       let count = 1;
       mediaDevices.forEach(mediaDevice => {
-        if (mediaDevice.kind === 'videoinput') {
+        if (mediaDevice.kind === 'videoinput' && !mediaDevice.deviceId.lenght ) {
           const option = document.createElement('option');
           option.value = mediaDevice.deviceId;
           const label = mediaDevice.label || `Camera ${count++}`;
           const textNode = document.createTextNode(label);
           option.appendChild(textNode);
           select.appendChild(option);
+          $("#cameras").val(mediaDevice.deviceId);
         }
       });
     }
@@ -155,8 +229,8 @@
           outputMessage.hidden = true;
           outputData.parentElement.hidden = false;
           outputData.innerText = code.data;
-          stopMediaTracks(currentStream);
           addDevice(code.data);
+          stopMediaTracks();
         } else {
           outputMessage.hidden = false;
           outputData.parentElement.hidden = true;
@@ -164,5 +238,5 @@
       }
       requestAnimationFrame(tick);
     }
-    </script>
+</script>
 {% endblock %}
