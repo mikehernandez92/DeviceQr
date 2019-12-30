@@ -88,11 +88,12 @@
   </div>
 
   <div class="row justify-content-center mt-4">
-    <div class="col-3 text-center">
-      <button id="takeDevices" type="button" class="btn btn-primary" onClick="takeDevices()">Take devices</button>
-    <div>
-    </div>
+    <div class="col-6-md text-center">
+      <button id="takeDevices" type="button" class="btn btn-primary" onClick="takeDevices()">Take devices</button>    
   </div>
+  <div class="col-6-md offset-md-2 text-center">
+      <button id="returnDevices" type="button" class="btn btn-primary" onClick="alert('retourning')">Return devices</button>
+    <div>
 </div>
 {% endblock %}
 
@@ -100,6 +101,7 @@
 <script>
   $(document).ready(function(){
     $("#takeDevices").attr("disabled", true);
+    $("#returnDevices").attr("disabled", true);
   });
 
   navigator.mediaDevices.enumerateDevices().then(gotDevices);
@@ -132,7 +134,46 @@
     });
 
     $.ajax({
-            url: '/registerDevice',
+            url: '{{ path("register_devices") }}',
+            type: 'post',
+            dataType: 'json',
+            contentType: 'application/json',
+            success: function (data) {
+                var notification =new Noty({
+                    type: 'success',
+                    layout: 'topRight',
+                    text: 'Devices has been taken! :)'
+                });
+                notification.show();
+                notification.setTimeout(4500);
+                $("#devices > tbody").html("");
+                countDevices =0;
+                $("#takeDevices").attr("disabled", true);
+                console.log(data);
+            },
+            data: JSON.stringify(dataSend)
+        });
+  }
+
+   function returnDevices(){
+
+    var dataSend = [];
+
+    $('#devices tr').each(function() {
+        var tester = $(this).find(".testerName").html();  
+        var btCode = $(this).find(".btCode").html();   
+        var btDesc =$(this).find(".btDesc").html();
+      if(tester){
+        var feed = {
+        testerName: tester, 
+        btId: btCode, description: btDesc};
+        dataSend.push(feed);
+      }
+      
+    });
+
+    $.ajax({
+            url: '{{ path("return_devices") }}',
             type: 'post',
             dataType: 'json',
             contentType: 'application/json',
@@ -160,6 +201,7 @@
     countDevices++;
     $("#devices").append("<tr><td>" + countDevices + "</td><td class='testerName'>"+testerName+"</td><td class='btCode'>" + res.btCode + "</td><td class='btDesc'>"+res.description+"</td></tr>");
     $("#takeDevices").attr("disabled", false);
+    $("#returnDevices").attr("disabled", false);
   }
 
   function drawLine(begin, end, color) {
@@ -177,7 +219,13 @@
       console.log('getting video');
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream) {
       currentStream= stream;
-      video.srcObject = currentStream;
+     if (video.mozSrcObject !== undefined) { // FF18a
+          video.mozSrcObject = stream;
+        } else if (video.srcObject !== undefined) {
+          video.srcObject = stream;
+        } else {
+          video.src = stream;
+      }
       video.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
       video.play();
       requestAnimationFrame(tick);
