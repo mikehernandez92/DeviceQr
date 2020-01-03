@@ -25,6 +25,7 @@ Encore
      */
     .addEntry('app', './assets/js/app.js')
     .addEntry('js/decodeQr', './assets/js/decodeQr.js')
+    .addStyleEntry('css/loader', './assets/css/loader.css')
     // When enabled, Webpack "splits" your files into smaller pieces for greater optimization.
     .splitEntryChunks()
 

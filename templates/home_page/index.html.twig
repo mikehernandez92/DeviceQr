@@ -92,7 +92,7 @@
       <button id="takeDevices" type="button" class="btn btn-primary" onClick="takeDevices()">Take devices</button>    
   </div>
   <div class="col-6-md offset-md-2 text-center">
-      <button id="returnDevices" type="button" class="btn btn-primary" onClick="alert('retourning')">Return devices</button>
+      <button id="returnDevices" type="button" class="btn btn-primary" onClick="returnDevices()">Return devices</button>
     <div>
 </div>
 {% endblock %}
@@ -142,13 +142,14 @@
                 var notification =new Noty({
                     type: 'success',
                     layout: 'topRight',
-                    text: 'Devices has been taken! :)'
+                    text: 'Devices have been taken! :)'
                 });
                 notification.show();
                 notification.setTimeout(4500);
                 $("#devices > tbody").html("");
                 countDevices =0;
                 $("#takeDevices").attr("disabled", true);
+                $("#returnDevices").attr("disabled", true);
                 console.log(data);
             },
             data: JSON.stringify(dataSend)
@@ -181,13 +182,14 @@
                 var notification =new Noty({
                     type: 'success',
                     layout: 'topRight',
-                    text: 'Devices has been taken! :)'
+                    text: 'Devices have been returned! :)'
                 });
                 notification.show();
                 notification.setTimeout(4500);
                 $("#devices > tbody").html("");
                 countDevices =0;
                 $("#takeDevices").attr("disabled", true);
+                $("#returnDevices").attr("disabled", true);
                 console.log(data);
             },
             data: JSON.stringify(dataSend)
